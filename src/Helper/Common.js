@@ -19,12 +19,60 @@ export function formatDate(date, fmt) {
 }
 
 function padLeftZero(str) {
-    return ('00' + str).substr(str.length);
+    return('00' + str).substr(str.length);
 }
 
+// 将16进制转为 字符串
+export function hexToString(str) {
+    var val = "",
+        len = str.length / 2;
+    for (var i = 0; i < len; i++) {
+        val += String.fromCharCode(parseInt(str.substr(i * 2, 2), 16));
+    }
+    console.log(val, '16进制转字符串')
+    return utf8to16(val);
+}
+// 处理中文乱码问题
+function utf8to16(str) {
+    var out,
+        i,
+        len,
+        c;
+    var char2,
+        char3;
+    out = "";
+    len = str.length;
+    i = 0;
+    while (i < len) {
+        c = str.charCodeAt(i++);
+        switch (c >> 4) {
+            case 0:
+            case 1:
+            case 2:
+            case 3:
+            case 4:
+            case 5:
+            case 6:
+            case 7: out += str.charAt(i - 1);
+                break;
+            case 12:
+            case 13: char2 = str.charCodeAt(i++);
+                out += String.fromCharCode(((c & 0x1F) << 6) | (char2 & 0x3F));
+                break;
+            case 14: char2 = str.charCodeAt(i++);
+                char3 = str.charCodeAt(i++);
+                out += String.fromCharCode(((c & 0x0F) << 12) | ((char2 & 0x3F) << 6) | ((char3 & 0x3F) << 0));
+                break;
+        }
+    }
+
+    console.log(out, 'out')
+    return out;
+}
+
+
 export function uint8ArrayToHex(buffer) {
-    return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' +
-        x.toString(16)).slice(-2)).join('').toUpperCase();
+    return Array.prototype.map.call(new Uint8Array(buffer), x => ('00' + x.toString(16)).slice(-2)).join('').toUpperCase();
 }
 
 export function HexStringToArray(hex) {
@@ -41,18 +89,17 @@ export function HexStringToArray(hex) {
 }
 
 export function saveJSON(data, filename) {
-    if (!data) {
+    if (! data) {
         alert('保存的数据为空');
         return;
     }
-    if (!filename)
+    if (! filename) 
         filename = 'json.json'
+    
     if (typeof data === 'object') {
         data = JSON.stringify(data, undefined, 4)
     }
-    var blob = new Blob([data], {
-            type: 'text/json'
-        }),
+    var blob = new Blob([data], {type: 'text/json'}),
         e = document.createEvent('MouseEvents'),
         a = document.createElement('a')
     a.download = filename
@@ -70,18 +117,15 @@ export function GetFromLocal(key) {
 }
 
 
-
 // 格式方法
 // 公共方法
-export function transitionJsonToString(jsonObj, callback) {
-    // 转换后的jsonObj受体对象
+export function transitionJsonToString(jsonObj, callback) { // 转换后的jsonObj受体对象
     var _jsonObj = null;
     // 判断传入的jsonObj对象是不是字符串，如果是字符串需要先转换为对象，再转换为字符串，这样做是为了保证转换后的字符串为双引号
     if (Object.prototype.toString.call(jsonObj) !== "[object String]") {
         try {
             _jsonObj = JSON.stringify(jsonObj);
-        } catch (error) {
-            // 转换失败错误信息
+        } catch (error) { // 转换失败错误信息
             console.error('您传递的json数据格式有误，请核对...');
             console.error(error);
             callback(error);
@@ -90,8 +134,7 @@ export function transitionJsonToString(jsonObj, callback) {
         try {
             jsonObj = jsonObj.replace(/(\')/g, '\"');
             _jsonObj = JSON.stringify(JSON.parse(jsonObj));
-        } catch (error) {
-            // 转换失败错误信息
+        } catch (error) { // 转换失败错误信息
             console.error('您传递的json数据格式有误，请核对...');
             console.error(error);
             callback(error);
@@ -100,8 +143,7 @@ export function transitionJsonToString(jsonObj, callback) {
     return _jsonObj;
 }
 // callback为数据格式化错误的时候处理函数
-export function formatJson(jsonObj, callback) {
-    // 正则表达式匹配规则变量
+export function formatJson(jsonObj, callback) { // 正则表达式匹配规则变量
     var reg = null;
     // 转换后的字符串变量
     var formatted = '';
@@ -111,7 +153,7 @@ export function formatJson(jsonObj, callback) {
     var PADDING = '    ';
     // json对象转换为字符串变量
     var jsonString = transitionJsonToString(jsonObj, callback);
-    if (!jsonString) {
+    if (! jsonString) {
         return jsonObj;
     }
     // 存储需要特殊处理的字符串段
@@ -134,32 +176,28 @@ export function formatJson(jsonObj, callback) {
     jsonString = jsonString.replace(/\r\n\,/g, ',');
     // 特殊处理双引号中的内容
     jsonArray = jsonString.split('\r\n');
-    jsonArray.forEach(function(node, index) {
-            // 获取当前字符串段中"的数量
-            var num = node.match(/\"/g) ? node.match(/\"/g).length : 0;
-            // 判断num是否为奇数来确定是否需要特殊处理
-            if (num % 2 && !_indexStart) {
-                _indexStart = index
-            }
-            if (num % 2 && _indexStart && _indexStart != index) {
-                _indexEnd = index
-            }
-            // 将需要特殊处理的字符串段的其实位置和结束位置信息存入，并对应重置开始时和结束变量
-            if (_indexStart && _indexEnd) {
-                _index.push({
-                    start: _indexStart,
-                    end: _indexEnd
-                })
-                _indexStart = null
-                _indexEnd = null
-            }
-        })
-        // 开始处理双引号中的内容，将多余的"去除
-    _index.reverse().forEach(function(item, index) {
-            var newArray = jsonArray.slice(item.start, item.end + 1)
-            jsonArray.splice(item.start, item.end + 1 - item.start, newArray.join(''))
-        })
-        // 奖处理后的数组通过\r\n连接符重组为字符串
+    jsonArray.forEach(function (node, index) { // 获取当前字符串段中"的数量
+        var num = node.match(/\"/g) ? node.match(/\"/g).length : 0;
+        // 判断num是否为奇数来确定是否需要特殊处理
+        if (num % 2 && ! _indexStart) {
+            _indexStart = index
+        }
+        if (num % 2 && _indexStart && _indexStart != index) {
+            _indexEnd = index
+        }
+        // 将需要特殊处理的字符串段的其实位置和结束位置信息存入，并对应重置开始时和结束变量
+        if (_indexStart && _indexEnd) {
+            _index.push({start: _indexStart, end: _indexEnd})
+            _indexStart = null
+            _indexEnd = null
+        }
+    })
+    // 开始处理双引号中的内容，将多余的"去除
+    _index.reverse().forEach(function (item, index) {
+        var newArray = jsonArray.slice(item.start, item.end + 1)
+        jsonArray.splice(item.start, item.end + 1 - item.start, newArray.join(''))
+    })
+    // 奖处理后的数组通过\r\n连接符重组为字符串
     jsonString = jsonArray.join('\r\n');
     // 将匹配到:后为回车换行加大括号替换为冒号加大括号
     jsonString = jsonString.replace(/\:\r\n\{/g, ':{');
@@ -168,30 +206,27 @@ export function formatJson(jsonObj, callback) {
     // 将上述转换后的字符串再次以\r\n分割成数组
     jsonArray = jsonString.split('\r\n');
     // 将转换完成的字符串根据PADDING值来组合成最终的形态
-    jsonArray.forEach(function(item, index) {
-            // console.log(item)
-            var i = 0;
-            // 表示缩进的位数，以tab作为计数单位
-            var indent = 0;
-            // 表示缩进的位数，以空格作为计数单位
-            var padding = '';
-            if (item.match(/\{$/) || item.match(/\[$/)) {
-                // 匹配到以{和[结尾的时候indent加1
-                indent += 1
-            } else if (item.match(/\}$/) || item.match(/\]$/) || item.match(/\},$/) || item.match(/\],$/)) {
-                // 匹配到以}和]结尾的时候indent减1
-                if (pad !== 0) {
-                    pad -= 1
-                }
-            } else {
-                indent = 0
+    jsonArray.forEach(function (item, index) { // console.log(item)
+        var i = 0;
+        // 表示缩进的位数，以tab作为计数单位
+        var indent = 0;
+        // 表示缩进的位数，以空格作为计数单位
+        var padding = '';
+        if (item.match(/\{$/) || item.match(/\[$/)) { // 匹配到以{和[结尾的时候indent加1
+            indent += 1
+        } else if (item.match(/\}$/) || item.match(/\]$/) || item.match(/\},$/) || item.match(/\],$/)) { // 匹配到以}和]结尾的时候indent减1
+            if (pad !== 0) {
+                pad -= 1
             }
-            for (i = 0; i < pad; i++) {
-                padding += PADDING
-            }
-            formatted += padding + item + '\r\n'
-            pad += indent
-        })
-        // 返回的数据需要去除两边的空格
+        } else {
+            indent = 0
+        }
+        for (i = 0; i < pad; i++) {
+            padding += PADDING
+        }
+        formatted += padding + item + '\r\n'
+        pad += indent
+    })
+    // 返回的数据需要去除两边的空格
     return formatted.trim();
 }
